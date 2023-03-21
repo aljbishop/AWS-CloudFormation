@@ -1,0 +1,187 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description:  This template deploys two VPCs, with two of public subnets spread
+  across two Availability Zones one in each VPC. It deploys internet gateways in each VPC, with a default
+  route on the public subnets. 
+  There is also an EC2 instance in each VPC, both in security groups allowing for SSH and ICMP.
+
+############################## VPC 1:
+
+Resources:
+  VPC01:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC01
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: IGW-01
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC01
+
+  PublicSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC01
+      AvailabilityZone: "us-east-1a"
+      CidrBlock: 10.0.0.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnet-VPC01
+
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC01
+      Tags:
+        - Key: Name
+          Value: !Sub ${VPC01} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet01
+
+
+  SecurityGroup01:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "SSH & ICMP"
+      GroupDescription: "Security group for SSH and ICMP"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.1.0.0/16
+      Tags:
+        - Key: Name
+          Value: SSH & ICMP SG01
+      VpcId: !Ref VPC01
+
+      
+  EC2Instance01:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0cff7528ff583bf9a
+      InstanceType: t2.micro
+      SubnetId: !Ref PublicSubnet01
+      SecurityGroupIds: 
+        - Ref: SecurityGroup01
+
+
+############################## VPC 2:
+
+  VPC02:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC02
+
+  InternetGateway02:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: IGW-02
+
+  InternetGatewayAttachment02:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway02
+      VpcId: !Ref VPC02
+
+  PublicSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC02
+      AvailabilityZone: "us-east-1b"
+      CidrBlock: 10.1.0.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnet-VPC02
+
+
+  PublicRouteTable02:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC02
+      Tags:
+        - Key: Name
+          Value: !Sub ${VPC02} Public Routes
+
+  DefaultPublicRoute02:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable02
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway02
+
+  PublicSubnet1RouteTableAssociation02:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable02
+      SubnetId: !Ref PublicSubnet02
+
+
+  SecurityGroup02:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "SSH & ICMP"
+      GroupDescription: "Security group for SSH and ICMP"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: SSH & ICMP SG02
+      VpcId: !Ref VPC02
+
+
+  EC2Instance02:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0cff7528ff583bf9a
+      InstanceType: t2.micro
+      SubnetId: !Ref PublicSubnet02
+      SecurityGroupIds: 
+        - Ref: SecurityGroup02
+      
